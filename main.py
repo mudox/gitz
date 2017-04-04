@@ -5,6 +5,10 @@ import gitz
 import sys
 import argparse
 
+import logging
+jack = logging.getLogger(__name__)
+jack.setLevel(logging.DEBUG)
+
 
 def handle_sub_cmd_start(ns):
   gitz.start()
@@ -15,7 +19,7 @@ def handle_sub_cmd_list(ns):
 
 
 def handle_sub_cmd_preview(ns):
-  print('preview command for fzf')
+  jack.warning('preview subcommand not implemented yet')
 
 
 # create the top-level parser
