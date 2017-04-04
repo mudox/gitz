@@ -11,6 +11,6 @@ gz() {
   fi
 
   if [[ -n $ret ]]; then
-    cd "${ret}" || exit
+    cd "${ret}" || return
   fi
 }
