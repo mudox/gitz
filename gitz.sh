@@ -4,8 +4,13 @@ THIS_PATH=$(dirname "$0")
 
 gz() {
   local ret
-  ret="$(python3 "${THIS_PATH}/gitz.py")"
+  if [[ $# == 1 ]]; then
+    ret=$(python3 "${THIS_PATH}"/main.py start)
+  else
+    ret=$(python3 "${THIS_PATH}"/main.py "$@")
+  fi
+
   if [[ -n $ret ]]; then
-    cd "${ret}"
+    cd "${ret}" || exit
   fi
 }

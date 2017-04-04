@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
 import os
 import json
 import subprocess
@@ -24,7 +23,7 @@ class Gitz(object):
       self.data = json.load(file)
       self.repos = [Repo(dict) for dict in self.data]
 
-  def fzf_lines(self):
+  def status_lines(self):
     """ generate colorized lines to feed to `fzf`
         :returns: a string lines with ANSI control code
 
@@ -36,19 +35,23 @@ class Gitz(object):
       :returns: header line
 
     """
-    line1 = '{:<14} {:^9} {:^9} {:^9} {:<40}'.format(
-      'REPO NAME', 'UPDATE', 'UNTRACKED', 'UNMERGED', 'HEAD [ahead] → REMOTE/HEADER [behind]')
+    line1 = '{:<14} {:^9} {:^9} {:^9} {:^40}'.format(
+      'REPO', 'UPDATE', 'UNTRACKED', 'UNMERGED',
+      'HEAD [ahead] → REMOTE/HEADER [behind]')
     line2 = '{} {} {} {} {}'.format(
-      '―' * 14,
-      '―' * 9,
-      '―' * 9,
-      '―' * 9,
-      '―' * 40,
+      '‾' * 14,
+      '‾' * 9,
+      '‾' * 9,
+      '‾' * 9,
+      '‾' * 40,
     )
     return line1 + '\n' + line2
 
+  def fzf_lines(self):
+    return self.header() + "\n" + self.status_lines()
+
   def __getitem__(self, name):
-    return list(filter(lambda x: x.name == name, gz.repos))[0]
+    return list(filter(lambda x: x.name == name, self.repos))[0]
 
 
 class Repo(object):
@@ -125,7 +128,7 @@ class Repo(object):
         branch = '{} [{}]'.format(self.branch_head, ahead)
         upstream = '{} [{}]'.format(self.branch_upstream, behind)
 
-      return '{:14} {} {} {} {:>10} → {}'.format(
+      return '{:14} {} {} {}  {:>10} → {}'.format(
         self.name,
         tracking,
         untracked,
@@ -134,7 +137,7 @@ class Repo(object):
         upstream,
       )
     else:
-      return '{:14} {} {} {} {}'.format(
+      return '{:14} {} {} {}  {}'.format(
         self.name,
         tracking,
         untracked,
@@ -147,10 +150,9 @@ def name_of_fzf_line(line):
   return re.match('^\w+', line).group(0)
 
 
-if __name__ == "__main__":
+def start():
   gz = Gitz()
-  lines = gz.header() + "\n" + gz.fzf_lines()
-
+  lines = gz.fzf_lines()
   try:
     selected_line = subprocess.check_output(
       [
@@ -163,12 +165,13 @@ if __name__ == "__main__":
         '--ansi',
         '--no-border',
         '--margin=1',
+        '--nth=1',
         # '--color=bg:-1,bg+:-1',
       ],
       input=lines,
       universal_newlines=True).strip()
   except subprocess.CalledProcessError as e:
-    if e.returncode != 130:
+    if e.returncode != 130:  # user canceled in fzf
       raise
   except:
     raise
