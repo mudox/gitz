@@ -5,6 +5,7 @@ import os
 import json
 import subprocess
 import re
+import logging
 
 REPO_SYMBOL = ' '
 TRACKING_SYMBOL = ' '
@@ -22,6 +23,33 @@ class Gitz(object):
     with open(os.path.expanduser(Gitz.DATA_FILE_PATH)) as file:
       self.data = json.load(file)
       self.repos = [Repo(dict) for dict in self.data]
+
+      self.max_name_width = 0
+      self.max_tracking_width = 0
+      self.max_untracked_width = 0
+      self.max_unmerged_width = 0
+      self.max_branch_width = 0
+
+      for repo in self.repos:
+        # remove tilder `~` if any
+        repo.path = os.path.expanduser(repo.path)
+        self.max_name_width = max(self.max_name_width, len(repo.name))
+        self.max_tracking_width = max(
+          self.max_tracking_width, len(str(repo.tracking)))
+        self.max_untracked_width = max(
+          self.max_untracked_width, len(str(repo.untracked)))
+        self.max_unmerged_width = max(
+          self.max_unmerged_width, len(str(repo.unmerged)))
+
+      logging.warning(
+        'name:%d tracking:%d untracked:%d unmerged:%d',
+        self.max_name_width,
+        self.max_tracking_width,
+        self.max_untracked_width,
+        self.max_unmerged_width,
+      )
+
+      # column width statistics
 
   def status_lines(self):
     """ generate colorized lines to feed to `fzf`
@@ -121,11 +149,14 @@ class Repo(object):
     (ahead, behind) = self.branch_ab
 
     if self.branch_upstream != '':
-      if ahead == 0 and behind == 0:
+      if ahead == 0:
         branch = '{}    '.format(self.branch_head)
-        upstream = '{}'.format(self.branch_upstream)
       else:
         branch = '{} [{}]'.format(self.branch_head, ahead)
+
+      if behind == 0:
+        upstream = '{}    '.format(self.branch_upstream)
+      else:
         upstream = '{} [{}]'.format(self.branch_upstream, behind)
 
       return '{:14} {} {} {}  {:>10} → {}'.format(
