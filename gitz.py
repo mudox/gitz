@@ -5,7 +5,10 @@ import os
 import json
 import subprocess
 import re
+
 import logging
+jack = logging.getLogger(__name__)
+jack.setLevel(logging.CRITICAL)
 
 REPO_SYMBOL = ' '
 TRACKING_SYMBOL = ' '
@@ -33,6 +36,8 @@ class Gitz(object):
       for repo in self.repos:
         # remove tilder `~` if any
         repo.path = os.path.expanduser(repo.path)
+
+        # column width statistic
         self.max_name_width = max(self.max_name_width, len(repo.name))
         self.max_tracking_width = max(
           self.max_tracking_width, len(str(repo.tracking)))
@@ -41,7 +46,7 @@ class Gitz(object):
         self.max_unmerged_width = max(
           self.max_unmerged_width, len(str(repo.unmerged)))
 
-      logging.warning(
+      jack.warning(
         'name:%d tracking:%d untracked:%d unmerged:%d',
         self.max_name_width,
         self.max_tracking_width,
@@ -49,7 +54,11 @@ class Gitz(object):
         self.max_unmerged_width,
       )
 
-      # column width statistics
+      # sort repos by change weight
+      self.repos.sort(
+        key=lambda x: x.tracking + x.untracked + x.unmerged,
+        reverse=True,
+      )
 
   def status_lines(self):
     """ generate colorized lines to feed to `fzf`
