@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
 import os
 import json
 import subprocess
@@ -30,18 +31,28 @@ class Gitz(object):
         """
     return '\n'.join([repo.line() for repo in self.repos])
 
-  def header_line(self):
+  def header(self):
     """ header line for fzf
-    :returns: header line
+      :returns: header line
 
     """
-    return '{:14}{:>7}{:>7}{:>7}'.format(' ', 'UPDATE', 'ADD', 'MERGE')
+    line1 = '{:<14} {:^9} {:^9} {:^9} {:<40}'.format(
+      'REPO NAME', 'UPDATE', 'UNTRACKED', 'UNMERGED', 'HEAD [ahead] → REMOTE/HEADER [behind]')
+    line2 = '{} {} {} {} {}'.format(
+      '―' * 14,
+      '―' * 9,
+      '―' * 9,
+      '―' * 9,
+      '―' * 40,
+    )
+    return line1 + '\n' + line2
 
   def __getitem__(self, name):
     return list(filter(lambda x: x.name == name, gz.repos))[0]
 
 
 class Repo(object):
+
   """Docstring for Repo. """
 
   def __init__(self, dict):
@@ -55,6 +66,10 @@ class Repo(object):
     self.unmerged = 0
     self.skipped = 0
 
+    self.branch_head = ''
+    self.branch_upstream = ''
+    self.branch_ab = (0, 0)
+
     self.parse()
 
   def parse(self):
@@ -62,15 +77,29 @@ class Repo(object):
         :returns: (tracked, untracked, unmerged)
 
         """
-    cmd = 'git -C {} status --porcelain=v2 --untracked-files=all'
+    cmd = 'git -C {} status --porcelain=v2 --untracked-files=all --branch'
 
     for line in os.popen(cmd.format(self.path)):
-      if line.startswith('1') or line.startswith('2'):
+      if line.startswith('# branch.head'):
+        self.branch_head = re.match('^# branch\.head (.*)$', line).group(1)
+
+      elif line.startswith('# branch.upstream'):
+        self.branch_upstream = re.match('^# branch\.upstream (.*)$',
+                                        line).group(1)
+
+      elif line.startswith('# branch.ab'):
+        mat = re.match('^# branch\.ab \+(.*) \-(.*)$', line)
+        self.branch_ab = (int(mat.group(1)), int(mat.group(2)))
+
+      elif line.startswith('1') or line.startswith('2'):
         self.tracking += 1
+
       elif line.startswith('u'):
-        self.untracked += 1
-      elif line.startswith('?'):
         self.unmerged += 1
+
+      elif line.startswith('?'):
+        self.untracked += 1
+
       else:
         self.skipped += 1
 
@@ -79,14 +108,39 @@ class Repo(object):
         :returns: a string with ANSI control code
 
         """
-    tracking = '\x1b[33m{:7}\x1b[0m'.format(self.tracking) if (
-      self.tracking > 0) else ''
-    untracked = '\x1b[32m{:7}\x1b[0m'.format(self.untracked) if (
-      self.untracked > 0) else ''
-    unmerged = '\x1b[34m{:7}\x1b[0m'.format(self.unmerged) if (
-      self.unmerged > 0) else ''
+    tracking = '\x1b[33m{:^9}\x1b[0m'.format(self.tracking) if (
+      self.tracking > 0) else ' ' * 9
+    untracked = '\x1b[32m{:^9}\x1b[0m'.format(self.untracked) if (
+      self.untracked > 0) else ' ' * 9
+    unmerged = '\x1b[34m{:^9}\x1b[0m'.format(self.unmerged) if (
+      self.unmerged > 0) else ' ' * 9
 
-    return '{:14}{}{}{}'.format(self.name, tracking, untracked, unmerged)
+    (ahead, behind) = self.branch_ab
+
+    if self.branch_upstream != '':
+      if ahead == 0 and behind == 0:
+        branch = '{}    '.format(self.branch_head)
+        upstream = '{}'.format(self.branch_upstream)
+      else:
+        branch = '{} [{}]'.format(self.branch_head, ahead)
+        upstream = '{} [{}]'.format(self.branch_upstream, behind)
+
+      return '{:14} {} {} {} {:>10} → {}'.format(
+        self.name,
+        tracking,
+        untracked,
+        unmerged,
+        branch,
+        upstream,
+      )
+    else:
+      return '{:14} {} {} {} {}'.format(
+        self.name,
+        tracking,
+        untracked,
+        unmerged,
+        self.branch_head,
+      )
 
 
 def name_of_fzf_line(line):
@@ -95,11 +149,22 @@ def name_of_fzf_line(line):
 
 if __name__ == "__main__":
   gz = Gitz()
-  lines = gz.header_line() + "\n" + gz.fzf_lines()
+  lines = gz.header() + "\n" + gz.fzf_lines()
 
   try:
     selected_line = subprocess.check_output(
-      ['fzf', '--header-lines=1', '--ansi'],
+      [
+        # 'fzf-tmux',
+        # '-u30%',
+        'fzf',
+        '--height=50%',
+        '--min-height=15',
+        '--header-lines=2',
+        '--ansi',
+        '--no-border',
+        '--margin=1',
+        # '--color=bg:-1,bg+:-1',
+      ],
       input=lines,
       universal_newlines=True).strip()
   except subprocess.CalledProcessError as e:
