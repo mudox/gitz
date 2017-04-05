@@ -39,10 +39,10 @@ REPO_SYMBOL = ' '
 TRACKING_SYMBOL = ' '
 UNTRACKED_SYMBOL = ' '
 UNMERGED_SYMBOL = ' '
-AB_SYMBOL = '⟚ '
+EQUAL_SYMBOL = '⟚ '
 AHEAD_SYMBOL = '⇢ '
 BEHIND_SYMBOL = '⇠ '
-EQUAL_SYMBOL = ' '
+AB_SYMBOL = ' '
 
 
 class Gitz(object):  # {{{
@@ -242,7 +242,7 @@ class Gitz(object):  # {{{
     # tracking / untracked / merged field
     # hide if there is no counts to show
     if self.show_tracking:
-      tracking = ' \x1b[32m{0:^{1}}\x1b[0m'.format(
+      tracking = ' \x1b[33m{0:^{1}}\x1b[0m'.format(
         self.count_field('tracking', repo.tracking), self.tracking_field_width)
     else:
       tracking = ''
@@ -255,7 +255,7 @@ class Gitz(object):  # {{{
       untracked = ''
 
     if self.show_unmerged:
-      unmerged = ' \x1b[32m{0:^{1}}\x1b[0m'.format(
+      unmerged = ' \x1b[34m{0:^{1}}\x1b[0m'.format(
         self.count_field('unmerged', repo.unmerged), self.unmerged_field_width)
     else:
       unmerged = ''
@@ -270,9 +270,10 @@ class Gitz(object):  # {{{
     right = '{1:{0}}'.format(self.max_upstream_width, repo.branch_upstream)
 
     # link part
-    link_symbol = '' if repo.branch_upstream == '' \
-      else AHEAD_SYMBOL if (ahead != 0 and behind == 0) \
+    link_symbol = '' if repo.branch_upstream == ''       \
+      else AHEAD_SYMBOL if (ahead != 0 and behind == 0)  \
       else BEHIND_SYMBOL if (ahead == 0 and behind != 0) \
+      else EQUAL_SYMBOL if (ahead == 0 and behind == 0)  \
       else AB_SYMBOL
 
     link = '{a:>{a_width}} {link:2} {b:<{b_width}}'
