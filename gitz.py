@@ -7,33 +7,10 @@ import subprocess
 import re
 from pathlib import Path
 
+from log import init_logging
 from repo import Repo
 
-
-# init logging {{{
-def init_logging(name=__name__):
-  import logging
-
-  jack = logging.getLogger(name)
-  jack.setLevel(logging.DEBUG)
-
-  log_dir = Path('/tmp/mudox/log/python/Gitz/')
-  log_dir.mkdir(parents=True, exist_ok=True)
-  log_file = log_dir / __name__
-  fh = logging.FileHandler(log_file, mode='w')
-  fh.setLevel(logging.DEBUG)
-
-  formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s:\n %(message)s')
-  fh.setFormatter(formatter)
-
-  jack.addHandler(fh)
-  jack.info('logger [%s] init complete', __name__)
-  return jack
-
-
-jack = init_logging()
-# }}}
+jack = init_logging(__name__)
 
 REPO_SYMBOL = ' '
 TRACKING_SYMBOL = ' '
@@ -42,7 +19,7 @@ UNMERGED_SYMBOL = ' '
 EQUAL_SYMBOL = '⟚ '
 AHEAD_SYMBOL = '⇢ '
 BEHIND_SYMBOL = '⇠ '
-AB_SYMBOL = ' '
+AB_SYMBOL = '⟚ '
 
 
 class Gitz(object):  # {{{
@@ -60,8 +37,6 @@ class Gitz(object):  # {{{
 
       # repos from ~/Git
       paths = [p for p in Path('~/Git').expanduser().glob('*/') if p.is_dir()]
-      jack.debug(paths)
-      paths = filter(lambda p: (p / '.git').is_dir(), paths)
       names = [p.parts[-1] for p in paths]
       repos = [Repo({"name": n, "path": p}) for n, p in zip(names, paths)]
       self.repos += repos
@@ -260,14 +235,14 @@ class Gitz(object):  # {{{
     else:
       unmerged = ''
 
-    # branch fields
+    # branch field
     (ahead, behind) = repo.branch_ab
 
     left = right = link = ''
 
     # branch left & right part
-    left = '{1:{0}}'.format(self.max_branch_head_width, repo.branch_head)
-    right = '{1:{0}}'.format(self.max_upstream_width, repo.branch_upstream)
+    left = '{1:>{0}}'.format(self.max_branch_head_width, repo.branch_head)
+    right = '{1:<{0}}'.format(self.max_upstream_width, repo.branch_upstream)
 
     # link part
     link_symbol = '' if repo.branch_upstream == ''       \

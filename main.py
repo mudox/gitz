@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import gitz
 import sys
 import argparse
 
-import logging
-jack = logging.getLogger(__name__)
-jack.setLevel(logging.DEBUG)
+import gitz
+
+from log import init_logging
+jack = init_logging(__name__)
 
 
 def handle_sub_cmd_start(ns):
