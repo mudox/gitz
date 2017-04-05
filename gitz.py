@@ -5,21 +5,40 @@ import os
 import json
 import subprocess
 import re
+from glob import glob
+from pathlib import Path
 
+# init logging {{{
 import logging
+
 jack = logging.getLogger(__name__)
 jack.setLevel(logging.DEBUG)
+
+log_dir = Path('/tmp/mudox/log/python/Gitz/')
+log_dir.mkdir(parents=True, exist_ok=True)
+log_file = log_dir / __name__
+fh = logging.FileHandler(log_file, mode='w')
+fh.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+  '%(asctime)s - %(name)s - %(levelname)s:\n %(message)s')
+fh.setFormatter(formatter)
+
+jack.addHandler(fh)
+jack.info('logger [%s] init complete', __name__)
+# }}}
 
 REPO_SYMBOL = ' '
 TRACKING_SYMBOL = ' '
 UNTRACKED_SYMBOL = ' '
 UNMERGED_SYMBOL = ' '
+AB_SYMBOL = '⟚ '
 AHEAD_SYMBOL = '⇢ '
 BEHIND_SYMBOL = '⇠ '
 EQUAL_SYMBOL = ' '
 
 
-class Gitz(object):
+class Gitz(object):  # {{{
 
   DATA_FILE_PATH = '~/.gitz.json'
   """Docstring for Gitz. """
@@ -27,8 +46,17 @@ class Gitz(object):
   def __init__(self):
     """TODO: to be defined1. """
     with open(os.path.expanduser(Gitz.DATA_FILE_PATH)) as file:
-      self.data = json.load(file)
-      self.repos = [Repo(dict) for dict in self.data]
+
+      # repos from ~/.gitz.json
+      data = json.load(file)
+      self.repos = [Repo(dict) for dict in data]
+
+      paths = [p for p in Path('~/Git').expanduser().glob('*/') if p.is_dir()]
+      names = [p.parts[-1] for p in paths]
+      repos = [Repo({"name": n, "path": p}) for n, p in zip(names, paths)]
+      self.repos += repos
+
+      jack.debug(names)
 
       # statistics
       self.max_name_width = 0
@@ -190,7 +218,7 @@ class Gitz(object):
     elif ahead == 0 and behind == 0:
       link = '    {}    '.format(EQUAL_SYMBOL)
     else:
-      link = '{:>3} {} {:<3}'.format(ahead, EQUAL_SYMBOL, behind)
+      link = '{:>3} {} {:<3}'.format(ahead, AB_SYMBOL, behind)
 
     left = '{:>%d}' % self.max_branch_width
     left = left.format(repo.branch_head)
@@ -213,7 +241,10 @@ class Gitz(object):
     return list(filter(lambda x: x.name == name, self.repos))[0]
 
 
-class Repo(object):
+# }}}
+
+
+class Repo(object):  # {{{
 
   """Docstring for Repo. """
 
@@ -264,6 +295,9 @@ class Repo(object):
 
       else:
         self.skipped += 1
+
+
+# }}}
 
 
 def name_of_fzf_line(line):
