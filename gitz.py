@@ -5,7 +5,6 @@ import os
 import json
 import subprocess
 import re
-from glob import glob
 from pathlib import Path
 
 # init logging {{{
@@ -110,7 +109,7 @@ class Gitz(object):  # {{{
           self.show_unmerged = True
 
       # fields width
-      self.name_field_with= max(self.max_name_width, 14)
+      self.name_field_with = max(self.max_name_width, 14)
       self.tracking_field_width = max(self.max_tracking_width, 9)
       self.untracked_field_width = max(self.max_untracked_width, 9)
       self.unmerged_field_width = max(self.max_unmerged_width, 9)
@@ -186,10 +185,25 @@ class Gitz(object):  # {{{
 
     return line1 + '\n' + line2
 
+  def count_field(self, which, number):
+    if which == 'tracking':
+      field_width = self.tracking_field_width
+      digit_width = self.max_tracking_width
+    elif which == 'untracked':
+      field_width = self.untracked_field_width
+      digit_width = self.max_untracked_width
+    elif which == 'unmerged':
+      field_width = self.unmerged_field_width
+      digit_width = self.max_unmerged_width
+    else:
+      assert False, "invalid argument `which`: %s" % which
+
+    width = int((field_width - digit_width) / 2 + digit_width)
+    return '{0:{1}}'.format(number, width)
+
   def line(self, repo):
     """generate line to feed for fzf with ansi control code
         :returns: a string with ANSI control code
-
         """
 
     # name field
@@ -199,21 +213,23 @@ class Gitz(object):  # {{{
     # tracking / untracked / merged field
     # hide if there is no counts to show
     if self.show_tracking:
-      tracking = ' \x1b[32m{:^%d}\x1b[0m' % self.tracking_field_width
-      tracking = tracking.format(repo.tracking if (repo.tracking > 0) else '')
+      tracking = ' \x1b[32m{0:^{1}}\x1b[0m'.format(
+        self.count_field('tracking', repo.tracking), self.tracking_field_width)
     else:
       tracking = ''
+
     if self.show_untracked:
-      untracked = ' \x1b[33m{:^%d}\x1b[0m' % self.untracked_field_width
-      untracked = untracked.format(
-        repo.untracked if (repo.untracked > 0) else '')
+      untracked = ' \x1b[32m{0:^{1}}\x1b[0m'.format(
+        self.count_field('untracked', repo.untracked), self.untracked_field_width)
     else:
       untracked = ''
+
     if self.show_unmerged:
-      unmerged = ' \x1b[34m{:^%d}\x1b[0m' % self.unmerged_field_width
-      unmerged = unmerged.format(repo.unmerged if (repo.unmerged > 0) else '')
+      unmerged = ' \x1b[32m{0:^{1}}\x1b[0m'.format(
+        self.count_field('unmerged', repo.unmerged), self.unmerged_field_width)
     else:
       unmerged = ''
+
 
     # branch fields
     (ahead, behind) = repo.branch_ab
