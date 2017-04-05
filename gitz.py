@@ -7,24 +7,32 @@ import subprocess
 import re
 from pathlib import Path
 
+from repo import Repo
+
+
 # init logging {{{
-import logging
+def init_logging(name=__name__):
+  import logging
 
-jack = logging.getLogger(__name__)
-jack.setLevel(logging.DEBUG)
+  jack = logging.getLogger(name)
+  jack.setLevel(logging.DEBUG)
 
-log_dir = Path('/tmp/mudox/log/python/Gitz/')
-log_dir.mkdir(parents=True, exist_ok=True)
-log_file = log_dir / __name__
-fh = logging.FileHandler(log_file, mode='w')
-fh.setLevel(logging.DEBUG)
+  log_dir = Path('/tmp/mudox/log/python/Gitz/')
+  log_dir.mkdir(parents=True, exist_ok=True)
+  log_file = log_dir / __name__
+  fh = logging.FileHandler(log_file, mode='w')
+  fh.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter(
-  '%(asctime)s - %(name)s - %(levelname)s:\n %(message)s')
-fh.setFormatter(formatter)
+  formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s:\n %(message)s')
+  fh.setFormatter(formatter)
 
-jack.addHandler(fh)
-jack.info('logger [%s] init complete', __name__)
+  jack.addHandler(fh)
+  jack.info('logger [%s] init complete', __name__)
+  return jack
+
+
+jack = init_logging()
 # }}}
 
 REPO_SYMBOL = ' '
@@ -50,7 +58,10 @@ class Gitz(object):  # {{{
       data = json.load(file)
       self.repos = [Repo(dict) for dict in data]
 
+      # repos from ~/Git
       paths = [p for p in Path('~/Git').expanduser().glob('*/') if p.is_dir()]
+      jack.debug(paths)
+      paths = filter(lambda p: (p / '.git').is_dir(), paths)
       names = [p.parts[-1] for p in paths]
       repos = [Repo({"name": n, "path": p}) for n, p in zip(names, paths)]
       self.repos += repos
@@ -66,6 +77,8 @@ class Gitz(object):  # {{{
 
       self.max_branch_head_width = 0
       self.max_upstream_width = 0
+      self.max_a_width = 0
+      self.max_b_width = 0
 
       self.show_tracking = False
       self.show_untracked = False
@@ -100,6 +113,9 @@ class Gitz(object):  # {{{
           self.max_upstream_width,
           len(repo.branch_upstream),
         )
+        a, b = repo.branch_ab
+        self.max_a_width = max(self.max_a_width, len(str(a)))
+        self.max_b_width = max(self.max_b_width, len(str(b)))
 
         if repo.tracking > 0:
           self.show_tracking = True
@@ -114,21 +130,34 @@ class Gitz(object):  # {{{
       self.untracked_field_width = max(self.max_untracked_width, 9)
       self.unmerged_field_width = max(self.max_unmerged_width, 9)
 
-      self.branch_field_width = self.max_branch_head_width + 10 + self.max_upstream_width
+      self.branch_field_width = sum(
+        [
+          self.max_branch_head_width,
+          1,
+          self.max_a_width,
+          4,
+          self.max_b_width,
+          1,
+          self.max_upstream_width,
+        ])
 
       jack.debug(
-        'name:%d tracking:%d untracked:%d unmerged:%d',
+        'widths: name:%d tracking:%d untracked:%d unmerged:%d',
         self.max_name_width,
         self.max_tracking_width,
         self.max_untracked_width,
         self.max_unmerged_width,
       )
 
-      # sort repos by change weight
-      self.repos.sort(
-        key=lambda x: x.tracking + x.untracked + x.unmerged,
-        reverse=True,
-      )
+      self.sort()
+
+  def sort(self):
+    # IDEA!: improve sorting algorithm
+    # sort repos by change weight
+    self.repos.sort(
+      key=lambda x: x.tracking + x.untracked + x.unmerged,
+      reverse=True,
+    )
 
   def status_lines(self):
     """ generate colorized lines to feed to `fzf`
@@ -220,7 +249,8 @@ class Gitz(object):  # {{{
 
     if self.show_untracked:
       untracked = ' \x1b[32m{0:^{1}}\x1b[0m'.format(
-        self.count_field('untracked', repo.untracked), self.untracked_field_width)
+        self.count_field('untracked', repo.untracked),
+        self.untracked_field_width)
     else:
       untracked = ''
 
@@ -230,24 +260,30 @@ class Gitz(object):  # {{{
     else:
       unmerged = ''
 
-
     # branch fields
     (ahead, behind) = repo.branch_ab
 
-    # link part in the middle of branch field
-    if ahead == 0 and behind != 0:
-      link = '    {} {:<3}'.format(BEHIND_SYMBOL, behind)
-    elif ahead != 0 and behind == 0:
-      link = '{:>3} {}    '.format(ahead, AHEAD_SYMBOL)
-    elif ahead == 0 and behind == 0:
-      link = '    {}    '.format(EQUAL_SYMBOL)
-    else:
-      link = '{:>3} {} {:<3}'.format(ahead, AB_SYMBOL, behind)
+    left = right = link = ''
 
-    left = '{:>%d}' % self.max_branch_head_width
-    left = left.format(repo.branch_head)
-    right = '{:<%d}' % self.max_upstream_width
-    right = right.format(repo.branch_upstream)
+    # branch left & right part
+    left = '{1:{0}}'.format(self.max_branch_head_width, repo.branch_head)
+    right = '{1:{0}}'.format(self.max_upstream_width, repo.branch_upstream)
+
+    # link part
+    link_symbol = '' if repo.branch_upstream == '' \
+      else AHEAD_SYMBOL if (ahead != 0 and behind == 0) \
+      else BEHIND_SYMBOL if (ahead == 0 and behind != 0) \
+      else AB_SYMBOL
+
+    link = '{a:>{a_width}} {link:2} {b:<{b_width}}'
+    link = link.format(
+      a=ahead or '',
+      a_width=self.max_a_width,
+      link=link_symbol,
+      b=behind or '',
+      b_width=self.max_b_width,
+    )
+
     branch = ' {} {} {}'.format(left, link, right)
 
     return '{}{}{}{}{}'.format(
@@ -263,62 +299,6 @@ class Gitz(object):  # {{{
 
   def __getitem__(self, name):
     return list(filter(lambda x: x.name == name, self.repos))[0]
-
-
-# }}}
-
-
-class Repo(object):  # {{{
-
-  """Docstring for Repo. """
-
-  def __init__(self, dict):
-    """TODO: to be defined1. """
-    self.name = dict['name']
-    self.path = dict['path']
-
-    # derived
-    self.tracking = 0
-    self.untracked = 0
-    self.unmerged = 0
-    self.skipped = 0
-
-    self.branch_head = ''
-    self.branch_upstream = ''
-    self.branch_ab = (0, 0)
-
-    self.parse()
-
-  def parse(self):
-    """ Parse `git status ...` output, filter out info
-        :returns: (tracked, untracked, unmerged)
-
-        """
-    cmd = 'git -C {} status --porcelain=v2 --untracked-files=all --branch'
-
-    for line in os.popen(cmd.format(self.path)):
-      if line.startswith('# branch.head'):
-        self.branch_head = re.match('^# branch\.head (.*)$', line).group(1)
-
-      elif line.startswith('# branch.upstream'):
-        self.branch_upstream = re.match('^# branch\.upstream (.*)$',
-                                        line).group(1)
-
-      elif line.startswith('# branch.ab'):
-        mat = re.match('^# branch\.ab \+(.*) \-(.*)$', line)
-        self.branch_ab = (int(mat.group(1)), int(mat.group(2)))
-
-      elif line.startswith('1') or line.startswith('2'):
-        self.tracking += 1
-
-      elif line.startswith('u'):
-        self.unmerged += 1
-
-      elif line.startswith('?'):
-        self.untracked += 1
-
-      else:
-        self.skipped += 1
 
 
 # }}}
