@@ -64,15 +64,20 @@ class Gitz(object):  # {{{
       self.show_untracked = False
       self.show_unmerged = False
 
+      self.show_a = False
+      self.show_b = False
+
       for repo in self.repos:
         # remove tilder `~` if any
         repo.path = os.path.expanduser(repo.path)
 
-        # column width statistic
+        # name width
         self.max_name_width = max(
           self.max_name_width,
           len(repo.name),
         )
+
+        # tracking & untracked & unmerged width
         self.max_tracking_width = max(
           self.max_tracking_width,
           len(str(repo.tracking)),
@@ -85,6 +90,8 @@ class Gitz(object):  # {{{
           self.max_unmerged_width,
           len(str(repo.unmerged)),
         )
+
+        # branch part components width
         self.max_branch_head_width = max(
           self.max_branch_head_width,
           len(repo.branch_head),
@@ -93,7 +100,13 @@ class Gitz(object):  # {{{
           self.max_upstream_width,
           len(repo.branch_upstream),
         )
+
         a, b = repo.branch_ab
+        if (a > 0):
+          self.show_a = True
+        if (b > 0):
+          self.show_b = True
+
         self.max_a_width = max(self.max_a_width, len(str(a)))
         self.max_b_width = max(self.max_b_width, len(str(b)))
 
@@ -105,21 +118,25 @@ class Gitz(object):  # {{{
           self.show_unmerged = True
 
       # fields width
-      self.name_field_with = max(self.max_name_width, 14)
+      self.name_field_width = max(self.max_name_width, 14)
       self.tracking_field_width = max(self.max_tracking_width, 9)
       self.untracked_field_width = max(self.max_untracked_width, 9)
       self.unmerged_field_width = max(self.max_unmerged_width, 9)
 
+      # branch width
       self.branch_field_width = sum(
         [
           self.max_branch_head_width,
-          1,
-          self.max_a_width,
           4,
-          self.max_b_width,
-          1,
           self.max_upstream_width,
         ])
+
+      if self.show_a:
+        self.branch_field_width += 1 + self.max_a_width
+
+      if self.show_b:
+        self.branch_field_width += 1 + self.max_b_width
+
 
       jack.debug(
         'widths: name:%d tracking:%d untracked:%d unmerged:%d',
@@ -169,9 +186,9 @@ class Gitz(object):  # {{{
     """ header line for fzf
       :returns: header line
     """
-    name = '{:>%d}' % self.name_field_with
+    name = '{:>%d}' % self.name_field_width
     name = name.format('REPO')
-    name_ = '{:‾>%d}' % self.name_field_with
+    name_ = '{:‾>%d}' % self.name_field_width
     name_ = name_.format('')
 
     if self.show_tracking:
@@ -235,7 +252,7 @@ class Gitz(object):  # {{{
         """
 
     # name field
-    name = '{:>%d}' % self.name_field_with
+    name = '{:>%d}' % self.name_field_width
     name = name.format(repo.name)
 
     # tracking / untracked / merged field
@@ -268,13 +285,14 @@ class Gitz(object):  # {{{
     left = '{1:>{0}}'.format(self.max_branch_head_width, repo.branch_head)
     right = '{1:<{0}}'.format(self.max_upstream_width, repo.branch_upstream)
 
-    # link part
+    # link symbol
     link_symbol = '' if repo.branch_upstream == ''       \
       else AHEAD_SYMBOL if (ahead != 0 and behind == 0)  \
       else BEHIND_SYMBOL if (ahead == 0 and behind != 0) \
       else EQUAL_SYMBOL if (ahead == 0 and behind == 0)  \
       else AB_SYMBOL
 
+    # line part
     link = '{a:>{a_width}} {link:2} {b:<{b_width}}'
     link = link.format(
       a=ahead or '',
@@ -283,6 +301,12 @@ class Gitz(object):  # {{{
       b=behind or '',
       b_width=self.max_b_width,
     )
+
+    if not self.show_a:
+      link = link[self.max_a_width + 1:]
+
+    if not self.show_b:
+      link = link[:-self.max_b_width - 1]
 
     branch = ' {} {} {}'.format(left, link, right)
 
@@ -301,7 +325,7 @@ class Gitz(object):  # {{{
     return list(filter(lambda x: x.name == name, self.repos))[0]
 
   def get_name_for_fzf_line(self, line):
-    return line[:self.name_field_with].strip()
+    return line[:self.name_field_width].strip()
 
 
 # }}}
