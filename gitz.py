@@ -27,21 +27,25 @@ class Gitz(object):  # {{{
   DATA_FILE_PATH = '~/.gitz.json'
   """Docstring for Gitz. """
 
-  def __init__(self):
+  def __init__(self, *, include_all=False):
     """TODO: to be defined1. """
     with open(os.path.expanduser(Gitz.DATA_FILE_PATH)) as file:
 
+      json_dict = json.load(file)
+
       # repos from ~/.gitz.json
-      data = json.load(file)
-      self.repos = [Repo(dict) for dict in data]
+      self.repos = [Repo(dict) for dict in json_dict['repos']]
 
-      # repos from ~/Git
-      paths = [p for p in Path('~/Git').expanduser().glob('*/') if p.is_dir()]
-      names = [p.parts[-1] for p in paths]
-      repos = [Repo({"name": n, "path": p}) for n, p in zip(names, paths)]
-      self.repos += repos
-
-      jack.debug(names)
+      if include_all:
+        # repos from ~/Git
+        dirs = json_dict['repos_under']
+        for dir in dirs:
+          paths = [
+            p for p in Path(dir).expanduser().glob('*/') if p.is_dir()
+          ]
+          names = [p.parts[-1] for p in paths]
+          repos = [Repo({"name": n, "path": p}) for n, p in zip(names, paths)]
+          self.repos += repos
 
       # statistics
       self.max_name_width = 0
@@ -284,8 +288,8 @@ def name_of_fzf_line(line):
   return re.match('^\w+', line).group(0)
 
 
-def start():
-  gz = Gitz()
+def start(show_all):
+  gz = Gitz(include_all=show_all)
   lines = gz.fzf_lines()
   try:
     selected_line = subprocess.check_output(
