@@ -169,7 +169,7 @@ class Gitz(object):  # {{{
     """ header line for fzf
       :returns: header line
     """
-    name = '{:<%d}' % self.name_field_with
+    name = '{:>%d}' % self.name_field_with
     name = name.format('REPO')
     name_ = '{:‾>%d}' % self.name_field_with
     name_ = name_.format('')
@@ -235,7 +235,7 @@ class Gitz(object):  # {{{
         """
 
     # name field
-    name = '{:<%d}' % self.name_field_with
+    name = '{:>%d}' % self.name_field_with
     name = name.format(repo.name)
 
     # tracking / untracked / merged field
