@@ -4,7 +4,6 @@
 import os
 import json
 import subprocess
-import re
 from pathlib import Path
 
 from log import init_logging
@@ -35,6 +34,8 @@ class Gitz(object):  # {{{
 
       # repos from ~/.gitz.json
       self.repos = [Repo(dict) for dict in json_dict['repos']]
+      for repo in self.repos:
+        repo.priority = 10
 
       if include_all:
         # repos from ~/Git
@@ -43,6 +44,8 @@ class Gitz(object):  # {{{
           paths = [p for p in Path(dir).expanduser().glob('*/') if p.is_dir()]
           names = [p.parts[-1] for p in paths]
           repos = [Repo({"name": n, "path": p}) for n, p in zip(names, paths)]
+          for repo in repos:
+            repo.priority = 5
           self.repos += repos
 
       # statistics
@@ -136,6 +139,7 @@ class Gitz(object):  # {{{
 
     """
     weight = 0
+    weight += repo.priority * 300
     weight += 200 if repo.branch_upstream != '' else 0
     weight += repo.tracking
     weight += repo.untracked
@@ -296,12 +300,11 @@ class Gitz(object):  # {{{
   def __getitem__(self, name):
     return list(filter(lambda x: x.name == name, self.repos))[0]
 
+  def get_name_for_fzf_line(self, line):
+    return line[:self.name_field_with].strip()
+
 
 # }}}
-
-
-def name_of_fzf_line(line):
-  return re.match('^\w+', line).group(0)
 
 
 def start(show_all):
@@ -330,7 +333,7 @@ def start(show_all):
   except:
     raise
   else:
-    name = name_of_fzf_line(selected_line)
+    name = gz.get_name_for_fzf_line(selected_line)
     print(gz[name].path)
   finally:
     pass
