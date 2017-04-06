@@ -40,9 +40,7 @@ class Gitz(object):  # {{{
         # repos from ~/Git
         dirs = json_dict['repos_under']
         for dir in dirs:
-          paths = [
-            p for p in Path(dir).expanduser().glob('*/') if p.is_dir()
-          ]
+          paths = [p for p in Path(dir).expanduser().glob('*/') if p.is_dir()]
           names = [p.parts[-1] for p in paths]
           repos = [Repo({"name": n, "path": p}) for n, p in zip(names, paths)]
           self.repos += repos
@@ -130,11 +128,29 @@ class Gitz(object):  # {{{
 
       self.sort()
 
+  def get_sorting_weight(self, repo):
+    """sorting key for repo object
+
+    :repo: the Repo object
+    :returns: the calculated weight value
+
+    """
+    weight = 0
+    weight += 200 if repo.branch_upstream != '' else 0
+    weight += repo.tracking
+    weight += repo.untracked
+    weight += repo.unmerged
+    a, b = repo.branch_ab
+    weight += a + b
+
+    return weight
+
   def sort(self):
     # IDEA!: improve sorting algorithm
     # sort repos by change weight
+
     self.repos.sort(
-      key=lambda x: x.tracking + x.untracked + x.unmerged,
+      key=self.get_sorting_weight,
       reverse=True,
     )
 
