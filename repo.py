@@ -31,6 +31,8 @@ class Repo(object):  # {{{
 
     self.parse()
 
+    self.priority = 0
+
   def parse(self):
     """ Parse `git status ...` output, filter out info
         :returns: (tracked, untracked, unmerged)

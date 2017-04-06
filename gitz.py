@@ -223,7 +223,7 @@ class Gitz(object):  # {{{
       assert False, "invalid argument `which`: %s" % which
 
     width = int((field_width - digit_width) / 2 + digit_width)
-    return '{0:{1}}'.format(number, width)
+    return '{0:{1}}'.format(number or '', width)
 
   def line(self, repo):
     """generate line to feed for fzf with ansi control code
