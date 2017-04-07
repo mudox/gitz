@@ -26,6 +26,7 @@ EL1 = subprocess.check_output(['tput', 'el1'], universal_newlines=True)
 SC = subprocess.check_output(['tput', 'sc'], universal_newlines=True)
 RC = subprocess.check_output(['tput', 'rc'], universal_newlines=True)
 CUU1 = subprocess.check_output(['tput', 'cuu1'], universal_newlines=True)
+
 # SMCUP = subprocess.check_output(['tput', 'smcup'], universal_newlines=True)
 # RMCUP = subprocess.check_output(['tput', 'rmcup'], universal_newlines=True)
 
@@ -58,10 +59,17 @@ class Gitz(object):  # {{{
           self.repos += repos
 
       # collect status up
-      print('collecting status: {}'.format(SC), end='', file=sys.stderr, flush=True)
+      print(
+        'collecting status: {}'.format(SC),
+        end='',
+        file=sys.stderr,
+        flush=True)
       for idx, repo in enumerate(self.repos, start=1):
         print(
-          '{}{}{}/{}'.format(RC, EL, idx, len(self.repos)), end='', file=sys.stderr, flush=True)
+          '{}{}{}/{}'.format(RC, EL, idx, len(self.repos)),
+          end='',
+          file=sys.stderr,
+          flush=True)
         repo.parse()
       print(CUU1, end='', file=sys.stderr, flush=True)
 
@@ -309,12 +317,13 @@ class Gitz(object):  # {{{
       else AB_SYMBOL
 
     # line part
+    # link = '\x1b[35m{a:>{a_width}}\x1b[0m {link:2} \x1b[36m{b:<{b_width}}\x1b[0m'
     link = '{a:>{a_width}} {link:2} {b:<{b_width}}'
     link = link.format(
-      a=ahead or '',
+      a='\x1b[35m{}\x1b[0m'.format(ahead) if ahead > 0 else '',
       a_width=self.max_a_width,
       link=link_symbol,
-      b=behind or '',
+      b='\x1b[36m{}\x1b[0m'.format(behind) if behind > 0 else '',
       b_width=self.max_b_width,
     )
 
@@ -324,7 +333,16 @@ class Gitz(object):  # {{{
     if not self.show_b:
       link = link[:-self.max_b_width - 1]
 
-    branch = ' {} {} {}'.format(left, link, right)
+    if ahead > 0 or behind > 0:
+      branch = ' {} {} \x1b[0m{}'.format(left, link, right)
+    else:
+      branch = [
+        ' \x1b[38;2;100;100;100m{}',
+        '\x1b[38;2;100;100;100m{}',
+        '\x1b[38;2;100;100;100m{}\x1b[0m',
+      ]
+      branch = ' '.join(branch)
+      branch = branch.format(left, link, right)
 
     return '{}{}{}{}{}'.format(
       name,
