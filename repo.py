@@ -29,8 +29,6 @@ class Repo(object):  # {{{
     self.branch_upstream = ''
     self.branch_ab = (0, 0)
 
-    self.parse()
-
     self.priority = 0
 
   def parse(self):

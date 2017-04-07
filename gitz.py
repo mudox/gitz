@@ -5,6 +5,7 @@ import os
 import json
 import subprocess
 from pathlib import Path
+import sys
 
 from log import Jack
 from repo import Repo
@@ -19,6 +20,14 @@ EQUAL_SYMBOL = '⟚ '
 AHEAD_SYMBOL = '⇢ '
 BEHIND_SYMBOL = '⇠ '
 AB_SYMBOL = '⟚ '
+
+EL = subprocess.check_output(['tput', 'el'], universal_newlines=True)
+EL1 = subprocess.check_output(['tput', 'el1'], universal_newlines=True)
+SC = subprocess.check_output(['tput', 'sc'], universal_newlines=True)
+RC = subprocess.check_output(['tput', 'rc'], universal_newlines=True)
+CUU1 = subprocess.check_output(['tput', 'cuu1'], universal_newlines=True)
+# SMCUP = subprocess.check_output(['tput', 'smcup'], universal_newlines=True)
+# RMCUP = subprocess.check_output(['tput', 'rmcup'], universal_newlines=True)
 
 
 class Gitz(object):  # {{{
@@ -47,6 +56,14 @@ class Gitz(object):  # {{{
           for repo in repos:
             repo.priority = 5
           self.repos += repos
+
+      # collect status up
+      print('collecting status: {}'.format(SC), end='', file=sys.stderr, flush=True)
+      for idx, repo in enumerate(self.repos, start=1):
+        print(
+          '{}{}{}/{}'.format(RC, EL, idx, len(self.repos)), end='', file=sys.stderr, flush=True)
+        repo.parse()
+      print(CUU1, end='', file=sys.stderr, flush=True)
 
       # statistics
       self.max_name_width = 0
