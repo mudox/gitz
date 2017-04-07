@@ -6,22 +6,27 @@ gz() {
   local ret
   if [[ $# == 0 ]]; then
     ret=$(python3 "${THIS_PATH}"/main.py start)
-    if [[ -n $ret ]]; then
-      cd "${ret}" || return
-    fi
   else
-    python3 "${THIS_PATH}"/main.py "$@"
+    ret=$(python3 "${THIS_PATH}"/main.py "$@")
   fi
+  __gitz_handle_result "$ret"
 }
 
 gza() {
   local ret
   if [[ $# == 0 ]]; then
     ret=$(python3 "${THIS_PATH}"/main.py start --all)
-    if [[ -n $ret ]]; then
-      cd "${ret}" || return
-    fi
   else
-    python3 "${THIS_PATH}"/main.py "$@"
+    ret=$(python3 "${THIS_PATH}"/main.py "$@")
+  fi
+  __gitz_handle_result "$ret"
+}
+
+__gitz_handle_result() {
+  if [[ $1 =~ '^cd:' ]]; then
+    local cdto
+    cdto="${1:3}"
+    printf "\e[34mcd to: %s ...\n" "$cdto"
+    cd "$cdto" || return
   fi
 }

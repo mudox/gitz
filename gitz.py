@@ -357,6 +357,6 @@ def start(show_all):
     raise
   else:
     name = gz.get_name_for_fzf_line(selected_line)
-    print(gz[name].path)
+    print('cd:{}'.format(gz[name].path))
   finally:
     pass
