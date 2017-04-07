@@ -321,7 +321,6 @@ class Gitz(object):  # {{{
     return self.header() + "\n" + self.status_lines()
 
   def __getitem__(self, name):
-    jack.debug("%s", name)
     return list(filter(lambda x: x.name == name, self.repos))[0]
 
   def get_name_for_fzf_line(self, line):
@@ -350,7 +349,7 @@ def start(show_all):
         # '--color=bg:-1,bg+:-1',
       ],
       input=lines,
-      universal_newlines=True).strip()
+      universal_newlines=True)
   except subprocess.CalledProcessError as e:
     if e.returncode != 130:  # user canceled in fzf
       raise
