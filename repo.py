@@ -3,9 +3,9 @@
 
 import os
 import re
-from log import init_logging
+from log import Jack
 
-jack = init_logging(__name__)
+jack = Jack(__name__)
 
 # }}}
 

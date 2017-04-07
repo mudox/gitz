@@ -6,10 +6,10 @@ import json
 import subprocess
 from pathlib import Path
 
-from log import init_logging
+from log import Jack
 from repo import Repo
 
-jack = init_logging(__name__)
+jack = Jack(__name__)
 
 REPO_SYMBOL = ' '
 TRACKING_SYMBOL = ' '
@@ -136,7 +136,6 @@ class Gitz(object):  # {{{
 
       if self.show_b:
         self.branch_field_width += 1 + self.max_b_width
-
 
       jack.debug(
         'widths: name:%d tracking:%d untracked:%d unmerged:%d',
@@ -322,6 +321,7 @@ class Gitz(object):  # {{{
     return self.header() + "\n" + self.status_lines()
 
   def __getitem__(self, name):
+    jack.debug("%s", name)
     return list(filter(lambda x: x.name == name, self.repos))[0]
 
   def get_name_for_fzf_line(self, line):

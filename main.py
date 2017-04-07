@@ -6,8 +6,8 @@ import argparse
 
 import gitz
 
-from log import init_logging
-jack = init_logging(__name__)
+from log import Jack
+jack = Jack(__name__)
 
 
 def handle_sub_cmd_start(ns):
