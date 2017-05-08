@@ -7,10 +7,10 @@ import subprocess
 from pathlib import Path
 import sys
 
-from log import Jack
+import mdxlog
 from repo import Repo
 
-jack = Jack(__name__)
+jack = mdxlog.MdxLogger(__name__)
 
 REPO_SYMBOL = ' '
 TRACKING_SYMBOL = ' '

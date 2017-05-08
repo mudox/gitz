@@ -3,9 +3,9 @@
 
 import os
 import re
-from log import Jack
+import mdxlog
 
-jack = Jack(__name__)
+jack = mdxlog.MdxLogger(__name__)
 
 # }}}
 

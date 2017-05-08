@@ -6,9 +6,9 @@ import argparse
 
 import gitz
 
-from log import Jack
-jack = Jack(__name__)
-
+import mdxlog
+mdxlog.initLogger('gitz')
+jack = mdxlog.MdxLogger(__name__)
 
 def handle_sub_cmd_start(ns):
   gitz.start(ns.show_all)
